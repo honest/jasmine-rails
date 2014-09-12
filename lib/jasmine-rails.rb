@@ -39,7 +39,10 @@ module JasmineRails
     # iterate over all directories used as part of the testsuite (including subdirectories)
     def each_spec_dir(&block)
       each_dir spec_dir.to_s, &block
-      each_dir src_dir.to_s, &block
+      sources = src_dir
+      sources.each do |src|
+        each_dir src.to_s, &block
+      end
     end
 
     # clear out cached jasmine config file
@@ -53,7 +56,10 @@ module JasmineRails
 
     def src_dir
       path = jasmine_config['src_dir'] || 'app/assets/javascripts'
-      Rails.root.join(path)
+      Array(path)
+      path.map do |p|
+        Rails.root.join(p)
+      end
     end
 
     def jasmine_config
@@ -74,12 +80,20 @@ module JasmineRails
       end
     end
 
-    def filter_files(root_dir, patterns)
+    def filter_files(root_dirs, patterns)
+      dirs = Array(root_dirs)
       files = patterns.to_a.collect do |pattern|
-        Dir.glob(root_dir.join(pattern)).sort
+        dirs.collect do |root_dir|
+          Dir.glob(root_dir.join(pattern)).sort
+        end
       end
       files = files.flatten
-      files = files.collect {|f| f.gsub(root_dir.to_s + '/', '') }
+      files = files.collect do |f| 
+        dir = dirs.detect do |d|
+          f.match(d.to_s)
+        end
+        f.gsub(dir.to_s + '/', '') 
+      end
       files || []
     end
 
